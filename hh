@@ -129,3 +129,4 @@ class WalletInterface {
 }
 
 export default WalletInterface;
+npm-shrinkwrap.json
