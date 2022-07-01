@@ -3,19 +3,26 @@
     <h2>MEW connect client library example</h2>
     <button @click="onClick">CONNECT</button>
     <h3>{{ userAddress }}</h3>
-    <button @click="ecrecover">ecrecover</button>
+    <button @click="getBlockNumber">Get Block Number</button>
     <button @click="showThing">CHECK</button>
     <div v-show="userAddress === ''">
       <button @click="selectNetwork(1)">Mainnet</button>
       <button @click="selectNetwork(3)">Ropsten</button>
       <button @click="selectNetwork(5)">Goerli</button>
       <button @click="selectNetwork(42)">Kovan</button>
+      <button @click="selectNetwork(137)">Matic</button>
+      <button @click="selectNetwork(56)">BSC</button>
+      <button @click="selectNetwork(4)">Rinkeby</button>
     </div>
 
     <ul v-show="userAddress !== ''">
-<!--      <ul>-->
+      <!--      <ul>-->
       <li>
         <button @click="disconnect">Disconnect</button>
+      </li>
+      <li>
+        <hr />
+        <button @click="closeDataChannel">Close Data Channel</button>
       </li>
       <li>
         <hr />
@@ -31,13 +38,13 @@
         <label for="toAmount1">
           to amount
           <input
-              id="toAmount1"
-              v-model="toAmount"
-              placeholder="amount"
+            id="toAmount1"
+            v-model="toAmount"
+            placeholder="amount"
           /> </label
         ><br />
         <!--        <button v-show="userAddress !== ''" @click="sendTx">send</button>-->
-        <button  @click="sendTx">send</button>
+        <button @click="sendTx">send</button>
         <h6>Sends to the connected wallet address</h6>
         <h3>Tx Hash:</h3>
         {{ txHash }}
@@ -47,30 +54,22 @@
         <h3>Send</h3>
         <label for="toAmount">
           to amount
-          <input
-            id="toAmount"
-            v-model="toAmount"
-            placeholder="amount"
-          /> </label
-        >
+          <input id="toAmount" v-model="toAmount" placeholder="amount" />
+        </label>
         <label for="altNonce">
-         alt nonce
-          <input
-              id="altNonce"
-              v-model="altNonce"
-              placeholder="altNonce"
-          /> </label
-        >
+          alt nonce
+          <input id="altNonce" v-model="altNonce" placeholder="altNonce" />
+        </label>
         <label for="altGasPrice">
           altGasPrice
           <input
-              id="altGasPrice"
-              v-model="altGasPrice"
-              placeholder="altGasPrice"
+            id="altGasPrice"
+            v-model="altGasPrice"
+            placeholder="altGasPrice"
           /> </label
         ><br />
-<!--        <button v-show="userAddress !== ''" @click="sendTx">send</button>-->
-        <button  @click="sendTx2">send alt-nonce</button>
+        <!--        <button v-show="userAddress !== ''" @click="sendTx">send</button>-->
+        <button @click="sendTx2">send alt-nonce</button>
         <h6>Sends to the connected wallet address</h6>
         <h3>Tx Hash:</h3>
         {{ txHash }}
@@ -135,9 +134,9 @@
           />
         </label>
         <br />
-<!--        <button v-show="userAddress !== ''" @click="sendTxDetailed">-->
-<!--          send-->
-<!--        </button>-->
+        <!--        <button v-show="userAddress !== ''" @click="sendTxDetailed">-->
+        <!--          send-->
+        <!--        </button>-->
         <button @click="sendTxDetailed">
           send
         </button>
@@ -207,6 +206,24 @@
         <hr />
         <button @click="getAccount">get account</button>
         <h3>{{ account }}</h3>
+      </li>
+      <li>
+        <hr />
+        <button @click="getEncryptionPublicKey">
+          encrypt decrypt public key
+        </button>
+      </li>
+      <li>
+        <hr />
+        <button @click="signTypedDataV3">
+          signed Typed v3
+        </button>
+      </li>
+      <li>
+        <hr />
+        <button @click="signTypedDataV4">
+          signed Typed v4
+        </button>
       </li>
       <li>
         <hr />
@@ -314,7 +331,17 @@ import PopUpCreator from '../../../src/connectWindow/popUpCreator';
 import Web3 from 'web3';
 import BigNumber from 'bignumber.js';
 import messageConstants from '../../../src/messageConstants';
-
+import ethUtil from 'ethereumjs-utils';
+import * as sigUtil from 'eth-sig-util';
+const NetworkEndPoints = {
+  1: 'https://nodes.mewapi.io/rpc/eth',
+  3: 'https://nodes.mewapi.io/rpc/rop',
+  5: 'wss://nodes.mewapi.io/ws/goerli',
+  42: 'https://nodes.mewapi.io/rpc/kovan',
+  137: 'wss://nodes.mewapi.io/ws/matic',
+  56: 'https://nodes.mewapi.io/rpc/bsc',
+  4: 'wss://nodes.mewapi.io/ws/rinkeby'
+};
 let web3;
 
 const signTx = () => {
@@ -390,127 +417,96 @@ export default {
     };
   },
   mounted() {
-    localStorage.debug = '*'
+    //localStorage.debug = '*';
     console.log('LOADEDED'); // todo remove dev item
-    // console.log(window.web3.currentProvider.isTrust); // todo remove dev item
-    // this.thing = window.web3.currentProvider.isMewConnect;
-    // // const connector = new MewWalletConnector().activate()
-    // // .then(console.log)
-    //
-    // Initialize the provider based client
-    // this.connect = new mewConnect.Provider({windowClosedError: true, rpcUrl: 'ws://127.0.0.1:8545', /*chainId: 1*/});
-    // 859569f6decc4446a5da1bb680e7e9cf
     this.connect = new mewConnect.Provider({
       windowClosedError: true,
-      // chainId: 1,
-      chainId: 3,
-     // rpcUrl: 'https://mainnet.infura.io/v3/' //'wss://mainnet.infura.io/ws/v3/'
-     //  rpcUrl: 'HTTP://127.0.0.1:7545'
-      rpcUrl: 'https://ropsten.infura.io/v3/c9b249497d074ab59c47a97bdfe6b401'
-     //  rpcUrl: 'ws://127.0.0.1:8545'
-     //  infuraId: '7d06294ad2bd432887eada360c5e1986'
+      chainId: 1,
+      rpcUrl: NetworkEndPoints[1]
     });
     this.connect.on('popupWindowClosed', () => {
       console.log(`popup window closed EVENT`);
     });
-    // this.connect = new mewConnect.Provider();
-    // Create the MEWconnect web3 provider
     this.ethereum = this.connect.makeWeb3Provider();
-    // this.ethereum = window.web3.currentProvider;
-    // Create a web3 instance using the MEWconnect web3 provider
     this.web3 = new Web3(this.ethereum);
     this.web3.eth
       .getBalance('0x192627797720b7c5EC7b9FAAeafa41FF49f866e3')
       .then(console.log)
       .catch(console.error);
+    this.web3.eth.net.getId().then(console.log);
     web3 = this.web3;
-    // See the 'onClick' method below for starting the connection sequence
-    // listener on the web3 provider emiting when the account changes (at the moment this is also the same as a connection being established.)
     this.ethereum.on('accountsChanged', accounts => {
       console.log(`accountsChanged User's address is ${accounts[0]}`);
     });
 
     this.ethereum.on('disconnected', () => {
-
       console.log(`accountsChanged User's address is DISCONNECTED`);
-      console.log("Provider");
+      console.log('Provider');
       this.userAddress = '';
     });
     this.connect.on('disconnected', () => {
       console.log(`accountsChanged User's address is DISCONNECTED`);
-      console.log("Wallet Core");
+      console.log('Wallet Core');
     });
     console.log(this.ethereum.on); // todo remove dev item
     this.ethereum.on('disconnect', () => {
-      console.log("Provider: disconnect");
+      console.log('Provider: disconnect');
       this.userAddress = '';
     });
     this.connect.on('disconnect', () => {
-      console.log("Wallet Core: disconnect");
+      console.log('Wallet Core: disconnect');
       this.userAddress = '';
     });
-
-    this.ethereum.on("connect", () => {
-      console.log("Provider: connect");
+    this.ethereum.on('connect', () => {
+      console.log('Provider: connect');
     });
-
-    this.connect.on("connect", () => {
-      console.log("Wallet Core: connect");
+    this.connect.on('connect', () => {
+      console.log('Wallet Core: connect');
     });
-
     this.altPopup = new PopUpCreator();
-    // window.alert(this.thing + '2')
-    console.log(this.ethereum); // todo remove dev item
-
     this.thing = 27;
-    // document.getElementById('signtx').addEventListener('click', (event) => {
-    // this.signTx();
-    // })
   },
   methods: {
+    closeDataChannel() {
+      this.connect.closeDataChannelForDemo();
+    },
+    getBlockNumber() {
+      this.web3.eth.getBlockNumber().then(console.log);
+    },
     showThing() {
-      console.log('CONSOLE CHECK'); // todo remove dev item
-
-      // new mewConnect.Provider();
-      // this.checker = !this.checker;
-      // if(this.checker){
-      //   this.checkOne = window.web3.currentProvider
-      // } else {
-      //   this.checkOne = '';
+      // if (
+      //   window.web3.currentProvider.isMewConnect ||
+      //   window.web3.currentProvider.isTrust
+      // ) {
+      //   this.checkOne = window.web3.currentProvider;
+      //   const web3Provider = window.web3.currentProvider
+      //     .enable()
+      //     .then(web3Provider => {
+      //       this.runningInApp = true;
+      //       web3Provider.send('eth_requestAccounts').then(accounts => {
+      //         console.log(`User's address is ${accounts[0]}`);
+      //         this.userAddress = accounts[0];
+      //       });
+      //       web3Provider.getAccounts().then(res => {
+      //         window.alert(res);
+      //       });
+      //       this.userAddress = web3Provider.postMessage('requestAccounts', 123);
+      //       state.web3Provider.on('message', res => {
+      //         window.alert(res);
+      //       });
+      //     });
       // }
-      if (
-        window.web3.currentProvider.isMewConnect ||
-        window.web3.currentProvider.isTrust
-      ) {
-        this.checkOne = window.web3.currentProvider;
-        const web3Provider = window.web3.currentProvider
-          .enable()
-          .then(web3Provider => {
-            // state.enable = this.enable.bind(this);
-            this.runningInApp = true;
-            web3Provider.send('eth_requestAccounts').then(accounts => {
-              console.log(`User's address is ${accounts[0]}`);
-              this.userAddress = accounts[0];
-            });
-            web3Provider.getAccounts().then(res => {
-              window.alert(res);
-            });
-            // const adddress = web3Provider.postMessage('requestAccounts', 123)
-            this.userAddress = web3Provider.postMessage('requestAccounts', 123);
-            // return new Promise((resolve, reject) => {
-            state.web3Provider.on('message', res => {
-              window.alert(res);
-              // resolve(res)
-            });
-          });
-
-        //   window.alert('running in app')
-        //   // return Promise.resolve(adddress)
-        // });
-      }
     },
     selectNetwork(chainId) {
-      // this.connect = new mewConnect.Provider({windowClosedError: true, chainId: chainId, infuraId: '', /*rpcUrl: 'wss://ropsten.infura.io/ws/v3/'*/});
+      this.connect = new mewConnect.Provider({
+        windowClosedError: true,
+        chainId,
+        rpcUrl: NetworkEndPoints[chainId]
+      });
+      this.ethereum = this.connect.makeWeb3Provider();
+      this.web3 = new Web3(this.ethereum);
+      this.web3.eth.getBlockNumber().then(console.log);
+      this.web3.eth.net.getId().then(console.log);
     },
     animate() {
       this.connect.showNotice();
@@ -557,13 +553,7 @@ export default {
       } catch (e) {
         console.error(e); // todo replace with proper error
       }
-      // this.ethereum.send('eth_requestAccounts').then(accounts => {
-      //   console.log(`User's address is ${accounts[0]}`);
-      //   this.userAddress = accounts[0];
-      // })
-      // .catch(console.error)
       console.log(mewConnect.Provider.isConnected); // todo remove dev item
-      // window.alert(mewConnect.Provider.isConnected)
     },
     disconnect() {
       this.connect.disconnect();
@@ -571,9 +561,11 @@ export default {
     },
     getAccount() {
       console.log(this.ethereum); // todo remove dev item
-      this.ethereum.send('eth_requestAccounts').then(accounts => {
-        console.log(`User's address is ${accounts[0]}`);
-      });
+      this.ethereum
+        .request({ method: 'eth_requestAccounts' })
+        .then(accounts => {
+          console.log(`User's address is ${accounts[0]}`);
+        });
     },
     getBalance() {
       console.log('this.userAddress', this.userAddress); // todo remove dev item
@@ -581,11 +573,6 @@ export default {
       value = value.replace('some', '');
       console.log(value); // todo remove dev item
       console.log('PROVIDER this.userAddress', Object.keys(this.userAddress)); // todo remove dev item
-
-      // this.web3.request({
-      //   method: 'eth_getBalance',
-      //   params: [this.userAddress]
-      // })
       console.log('this.userAddress', this.userAddress.replace('0x', '')); // todo remove dev item
       this.web3.eth.getBalance(this.userAddress).then(res => {
         console.log(res); // todo remove dev item
@@ -606,8 +593,6 @@ export default {
               value: new BigNumber(this.toAmount)
                 .times(new BigNumber(10).pow(18))
                 .toFixed()
-              /*gasPrice: gasPrice ,
-              gasLimit: '0xa'// 21000*/
             })
             .once('transactionHash', hash => {
               console.log(['Hash', hash]);
@@ -627,80 +612,43 @@ export default {
     sendTx2() {
       this.web3.eth.getBalance(this.userAddress).then(bal => this.balance);
       this.web3.eth.getGasPrice().then(gasPrice => {
-        if(this.altGasPrice !== '' ){
-          gasPrice = this.altGasPrice
+        if (this.altGasPrice !== '') {
+          gasPrice = this.altGasPrice;
         }
         console.log('gasPrice', gasPrice); // todo remove dev item
         this.web3.eth.getTransactionCount(this.userAddress).then(nonce => {
-          if(this.altNonce !== '' ){
-            nonce = this.altNonce
+          if (this.altNonce !== '') {
+            nonce = this.altNonce;
           }
           console.log('nonce', nonce); // todo remove dev item
           this.web3.eth
-              .sendTransaction({
-                from: this.userAddress,
-                to: this.userAddress,
-                nonce,
-                value: new BigNumber(this.toAmount)
-                    .times(new BigNumber(10).pow(18))
-                    .toFixed()
-                /*gasPrice: gasPrice ,
-                gasLimit: '0xa'// 21000*/
-              })
-              .once('transactionHash', hash => {
-                console.log(['Hash', hash]);
-                this.txHash = hash;
-              })
-              .once('receipt', res => {
-                console.log(['Receipt', res]);
-              })
-              .on('error', err => {
-                console.log(['Error', err]);
-              })
-              .then(txhash => console.log('THEN: ', txhash))
-              .catch(err => console.error(err));
+            .sendTransaction({
+              from: this.userAddress,
+              to: this.userAddress,
+              nonce,
+              value: new BigNumber(this.toAmount)
+                .times(new BigNumber(10).pow(18))
+                .toFixed()
+            })
+            .once('transactionHash', hash => {
+              console.log(['Hash', hash]);
+              this.txHash = hash;
+            })
+            .once('receipt', res => {
+              console.log(['Receipt', res]);
+            })
+            .on('error', err => {
+              console.log(['Error', err]);
+            })
+            .then(txhash => console.log('THEN: ', txhash))
+            .catch(err => console.error(err));
         });
       });
     },
     sendTxDetailed() {
-      this.sendTxDetailed2()
-/*      // this.web3.eth.getBalance(this.userAddress).then(bal => this.balance);
-      console.log('this.toGasPriceDetailed', this.toGasPriceDetailed); // todo remove dev item
-      this.web3.eth
-        .sendTransaction({
-          from:
-            this.fromAddressDetailed !== ''
-              ? this.fromAddressDetailed
-              : this.userAddress,
-          to:
-            this.toAddressDetailed !== ''
-              ? this.toAddressDetailed
-              : this.userAddress,
-          nonce: this.toNonceDetailed !== '' ? this.toNonceDetailed : undefined,
-          value: new BigNumber(this.toAmount)
-            .times(new BigNumber(10).pow(18))
-            .toFixed(),
-          gasPrice: this.toGasPriceDetailed,
-          data: this.toDataDetailed,
-          // gas: this.toGasLimitDetailed,
-          gasLimit: this.toGasLimitDetailed
-        })
-        // .once('transactionHash', hash => {
-        //   console.log(['Hash', hash]);
-        //   this.tokenTxHash = hash;
-        // })
-        // .once('receipt', res => {
-        //   console.log(['Receipt', res]);
-        // })
-        // .on('error', err => {
-        //   console.log(['Error', err]);
-        // })
-        .then(txhash => console.log('THEN: ', txhash))
-        .catch(console.error);*/
+      this.sendTxDetailed2();
     },
     sendTxDetailed2() {
-      // this.web3.eth.getBalance(this.userAddress).then(bal => this.balance);
-      console.log('this.toGasPriceDetailed-2', this.toGasPriceDetailed); // todo remove dev item
       this.web3.eth
         .signTransaction({
           from:
@@ -717,19 +665,8 @@ export default {
             .toFixed(),
           gasPrice: this.toGasPriceDetailed,
           data: this.toDataDetailed,
-          // gas: this.toGasLimitDetailed,
           gasLimit: this.toGasLimitDetailed
         })
-        // .once('transactionHash', hash => {
-        //   console.log(['Hash', hash]);
-        //   this.tokenTxHash = hash;
-        // })
-        // .once('receipt', res => {
-        //   console.log(['Receipt', res]);
-        // })
-        // .on('error', err => {
-        //   console.log(['Error', err]);
-        // })
         .then(txhash => {
           console.log('THEN: ', txhash);
           this.web3.eth
@@ -751,8 +688,6 @@ export default {
               nonce,
               value: 0,
               gasPrice: gasPrice
-              // gas: 21000
-              // gasLimit: 111111
             })
             .then(txhash => {
               console.log('THEN: ', txhash);
@@ -768,23 +703,189 @@ export default {
         this.web3.eth.getTransactionCount(this.userAddress).then(nonce => {
           console.log('NONCE', nonce); // todo remove dev item
           this.web3.eth
-            .signTransaction({
-              from: this.userAddress,
-              to: this.userAddress,
-              nonce,
-              value: 0,
-              gasPrice: gasPrice,
-              data: '0x',
-              gas: '0x5208',
-              gasLimit: '0x5208'
-            }, this.userAddress)
+            .signTransaction(
+              {
+                from: this.userAddress,
+                to: this.userAddress,
+                nonce,
+                value: 0,
+                gasPrice: gasPrice,
+                data: '0x',
+                gas: '0x5208',
+                gasLimit: '0x5208'
+              },
+              this.userAddress
+            )
             .then(txhash => {
-              console.log('THEN: ', txhash);
               this.signedTxNonStandard = txhash;
             })
             .catch(err => console.error(err));
         });
       });
+    },
+    signTypedDataV4() {
+      const data = {
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' }
+          ],
+          Person: [
+            { name: 'name', type: 'string' },
+            { name: 'wallet', type: 'address' }
+          ],
+          Mail: [
+            { name: 'from', type: 'Person' },
+            { name: 'to', type: 'Person' },
+            { name: 'contents', type: 'string' }
+          ]
+        },
+        primaryType: 'Mail',
+        domain: {
+          name: 'Ether Mail',
+          version: '1',
+          chainId: 1,
+          verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+        },
+        message: {
+          sender: {
+            name: 'Cow',
+            wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826'
+          },
+          recipient: {
+            name: 'Bob',
+            wallet: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB'
+          },
+          contents: 'Hello, Bob!'
+        }
+      };
+      this.ethereum
+        .request({
+          method: 'eth_signTypedData_v4',
+          params: [this.userAddress, JSON.stringify(data)]
+        })
+        .then(sig => {
+          console.log('typed data sig', sig);
+          console.log(
+            sigUtil
+              .recoverTypedSignature(
+                {
+                  sig,
+                  data
+                },
+                'V4'
+              )
+              .toString('hex')
+          );
+        });
+    },
+    signTypedDataV3() {
+      const data = {
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' }
+          ],
+          Person: [
+            { name: 'name', type: 'string' },
+            { name: 'wallet', type: 'address' }
+          ],
+          Mail: [
+            { name: 'from', type: 'Person' },
+            { name: 'to', type: 'Person' },
+            { name: 'contents', type: 'string' }
+          ]
+        },
+        primaryType: 'Mail',
+        domain: {
+          name: 'Ether Mail',
+          version: '1',
+          chainId: 1,
+          verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+        },
+        message: {
+          sender: {
+            name: 'Cow',
+            wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826'
+          },
+          recipient: {
+            name: 'Bob',
+            wallet: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB'
+          },
+          contents: 'Hello, Bob!'
+        }
+      };
+      this.ethereum
+        .request({
+          method: 'eth_signTypedData_v3',
+          params: [this.userAddress, JSON.stringify(data)]
+        })
+        .then(sig => {
+          console.log('typed data sig', sig);
+          console.log(
+            sigUtil
+              .recoverTypedSignature(
+                {
+                  sig,
+                  data
+                },
+                'V3'
+              )
+              .toString('hex')
+          );
+        });
+    },
+    getEncryptionPublicKey() {
+      this.ethereum
+        .request({
+          method: 'eth_getEncryptionPublicKey',
+          params: [this.userAddress]
+        })
+        .then(pubkey => {
+          console.log(`User's public encryption key ${pubkey}`);
+          const encryptedMessage = Buffer.from(
+            JSON.stringify(
+              sigUtil.encrypt(
+                pubkey,
+                { data: 'Hello world! ' + new Date().getTime() },
+                'x25519-xsalsa20-poly1305'
+              )
+            ),
+            'utf8'
+          );
+
+          const encryptedMessageHex = ethUtil.bufferToHex(encryptedMessage);
+          console.log('encrypted message', encryptedMessageHex);
+          setTimeout(() => {
+            this.ethereum
+              .request({
+                method: 'eth_decrypt',
+                params: [encryptedMessageHex, this.userAddress]
+              })
+              .then(decryptedMessage =>
+                console.log('The decrypted message is:', decryptedMessage)
+              )
+              .catch(error => console.log(error.message));
+          }, 2000);
+          setTimeout(() => {
+            this.ethereum
+              .request({
+                method: 'eth_decrypt',
+                params: [encryptedMessage.toString('utf8'), this.userAddress]
+              })
+              .then(decryptedMessage =>
+                console.log(
+                  'The decrypted struct message is:',
+                  decryptedMessage
+                )
+              )
+              .catch(error => console.log(error.message));
+          }, 4000);
+        });
     },
     signMessage() {
       this.web3.eth
@@ -979,8 +1080,7 @@ export default {
       try {
         const msg = '1234';
         if (this.signatureToCheck === '' && this.signatureFromMessage === '') {
-          console.log(  'lklklklk',          this.signatureFromMessage,
-              this.userAddress); // todo remove dev item
+          console.log('lklklklk', this.signatureFromMessage, this.userAddress); // todo remove dev item
           this.signatureFromMessage = '1234';
           this.signatureToCheck = await this.web3.eth.personal.sign(
             this.signatureFromMessage,

@@ -1,9 +1,8 @@
-import EthCalls from '../web3Calls';
+/* eslint-disable */
 import EventNames from '../events';
 import { toPayload, toError } from '../jsonrpc';
 import { getSanitizedTx } from './utils';
 import BigNumber from 'bignumber.js';
-import Misc from '../../helpers/misc';
 import debugLogger from 'debug';
 const debug = debugLogger('MEWconnectWeb3');
 const debugErrors = debugLogger('MEWconnectError');
@@ -20,17 +19,12 @@ const setEvents = (promiObj, tx, eventHub) => {
       eventHub.emit('Error', err);
     });
 };
-export default async (
-  { payload, store, requestManager, eventHub },
-  res,
-  next
-) => {
+export default async ({ payload, store, eventHub }, res, next) => {
   if (payload.method !== 'eth_sendTransaction') return next();
   const tx = Object.assign({}, payload.params[0]);
   const localTx = Object.assign({}, tx);
   delete localTx['gas'];
   delete localTx['nonce'];
-  const ethCalls = new EthCalls(requestManager);
   try {
     if (!store.state.wallet) {
       eventHub.emit(EventNames.WALLET_NOT_CONNECTED);
@@ -48,16 +42,13 @@ export default async (
     } else if (!tx.gasLimit && tx.gas) {
       tx.gasLimit = tx.gas;
     }
-    tx.gas =
-      !tx.gas || new BigNumber(tx.gas).lte(0)
-        ? await ethCalls.estimateGas(localTx)
-        : tx.gas;
-    tx.gasPrice =
-      !tx.gasPrice || new BigNumber(tx.gasPrice).lte(0)
-        ? await store.state.web3.eth.getGasPrice()
-        : tx.gasPrice;
-    tx.chainId = !tx.chainId ? store.state.network.type.chainID : tx.chainId;
+    tx.gas = !tx.gas ? await store.state.web3.eth.estimateGas(localTx) : tx.gas;
+    tx.gasPrice = !tx.gasPrice
+      ? await store.state.web3.eth.getGasPrice()
+      : tx.gasPrice;
+    tx.chainId = !tx.chainId ? store.state.network.chainID : tx.chainId;
   } catch (e) {
+    eventHub.emit(EventNames.ERROR_NOTIFY, e);
     debugErrors(e);
     res(e);
     return;
@@ -76,17 +67,9 @@ export default async (
         const _promiObj = store.state.web3.eth.sendSignedTransaction(
           _response.rawTransaction
         );
-
         _promiObj
           .once('transactionHash', hash => {
             if (store.state.wallet !== null) {
-              const localStoredObj = store.nonceCache;
-              store.nonceCache = {
-                nonce: Misc.sanitizeHex(
-                  new BigNumber(localStoredObj.nonce).plus(1).toString(16)
-                ),
-                timestamp: localStoredObj.timestamp
-              };
               if (store.noSubs) {
                 const txHash = hash;
                 const start = Date.now();
@@ -96,7 +79,7 @@ export default async (
                     .then(result => {
                       if (result !== null) {
                         clearInterval(interval);
-                        _promiObj.emit('receipt', res);
+                        _promiObj.emit('receipt', result);
                         return;
                       }
                       const cancelInterval =
@@ -106,14 +89,16 @@ export default async (
                       }
                     })
                     .catch(err => {
+                      eventHub.emit(EventNames.ERROR_NOTIFY, err);
                       _promiObj.emit('error', err);
                     });
-                }, 1000);
+                }, 5000);
               }
             }
             res(null, toPayload(payload.id, hash));
           })
           .on('error', err => {
+            eventHub.emit(EventNames.ERROR_NOTIFY, err);
             debugErrors('Error: eth_sendTransaction', err);
             res(err);
           });

@@ -2,14 +2,13 @@
 import MEWconnect from '../../../index';
 import { Transaction } from 'ethereumjs-tx';
 import WalletInterface from '../WalletInterface';
-import { MEW_CONNECT as mewConnectType } from '../bip44/index';
 import {
   getSignTransactionObject,
   sanitizeHex,
   getBufferFromHex,
   calculateChainIdFromV
 } from '../utils';
-import { hashPersonalMessage } from 'ethereumjs-util';
+import { hashPersonalMessage } from 'ethereumjs-utils';
 import errorHandler from './errorHandler';
 import commonGenerator from '../helpers/commonGenerator';
 import Misc from '../helpers/misc';
@@ -56,7 +55,7 @@ class MEWconnectWalletInterface extends WalletInterface {
 
 class MEWconnectWallet {
   constructor(state, popupCreator, popUpHandler) {
-    this.identifier = mewConnectType;
+    this.identifier = 'mew_connect';
     this.isHardware = IS_HARDWARE;
     this.mewConnect = new MEWconnect.Initiator({
       v1Url: V1_SIGNAL_URL,
@@ -96,7 +95,7 @@ class MEWconnectWallet {
         tx.data.slice(0, 10) === '0xa9059cbb' ||
         tx.data.slice(0, 10) === '0x095ea7b3'
       ) {
-        tokenInfo = this.state.network.type.tokens.find(
+        tokenInfo = this.state.network.tokens.find(
           entry => entry.address.toLowerCase() === tx.to.toLowerCase()
         );
         if (tokenInfo) {
@@ -117,7 +116,7 @@ class MEWconnectWallet {
         this.mewConnect.once('signTx', result => {
           this.mewConnect.removeAllListeners('reject');
           tx = new Transaction(sanitizeHex(result), {
-            common: commonGenerator(this.state.network.type)
+            common: commonGenerator(this.state.network)
           });
           const signedChainId = calculateChainIdFromV(tx.v);
           if (signedChainId !== networkId)
@@ -188,10 +187,6 @@ createWallet.errorHandler = errorHandler;
 const signalerConnect = (url, mewConnect) => {
   return new Promise(resolve => {
     mewConnect.initiatorStart(url);
-    // future extension
-    // mewConnect.on('AuthRejected', () => {
-    //   reject();
-    // });
     mewConnect.on('RtcConnectedEvent', () => {
       mewConnect.sendRtcMessage('address', '');
       mewConnect.once('address', data => {
